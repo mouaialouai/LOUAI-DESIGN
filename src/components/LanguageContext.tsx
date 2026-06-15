@@ -13,13 +13,15 @@ interface LanguageContextProps {
 const LanguageContext = createContext<LanguageContextProps | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<'en' | 'ar'>('en');
+  const [language, setLanguageState] = useState<'en' | 'ar'>('ar');
 
   // Load language preference from local storage if available
   useEffect(() => {
     const saved = localStorage.getItem('lm-portfolio-lang');
     if (saved === 'en' || saved === 'ar') {
       setLanguageState(saved);
+    } else {
+      setLanguageState('ar');
     }
   }, []);
 

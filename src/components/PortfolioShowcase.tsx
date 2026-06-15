@@ -487,6 +487,20 @@ export default function PortfolioShowcase() {
 
   // Load projects from Cloud Firestore with localStorage fallback on mount
   useEffect(() => {
+    const mapLegacyImage = (url: string | undefined): string => {
+      if (!url) return '';
+      if (url.includes('louaimouaia_brand_identity_1781292469136.jpg')) {
+        return PROJECTS.find(p => p.id === 'proj-1')?.imageUrl || url;
+      }
+      if (url.includes('louaimouaia_institutional_poster_1781292485220.jpg')) {
+        return PROJECTS.find(p => p.id === 'proj-2')?.imageUrl || url;
+      }
+      if (url.includes('louaimouaia_social_media_art_1781292499793.jpg')) {
+        return PROJECTS.find(p => p.id === 'proj-3')?.imageUrl || url;
+      }
+      return url;
+    };
+
     const loadProjects = async () => {
       // 1. Determine if the local items are the default PROJECTS list or custom (deep check)
       let isLocalDefault = true;
@@ -494,7 +508,14 @@ export default function PortfolioShowcase() {
       try {
         const saved = localStorage.getItem('louai_custom_projects');
         if (saved) {
-          localItems = JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            localItems = parsed.map((item: any) => ({
+              ...item,
+              imageUrl: mapLegacyImage(item.imageUrl),
+              galleryImages: (item.galleryImages || []).map((imgUrl: string) => mapLegacyImage(imgUrl))
+            }));
+          }
         }
       } catch (e) {
         console.warn('Error reading local storage:', e);
@@ -563,6 +584,8 @@ export default function PortfolioShowcase() {
         const items: Project[] = [];
         querySnapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          const mappedImageUrl = mapLegacyImage(data.imageUrl);
+          const mappedGallery = (data.galleryImages || []).map((imgUrl: string) => mapLegacyImage(imgUrl));
           items.push({
             id: docSnap.id,
             category: data.category as any,
@@ -572,8 +595,8 @@ export default function PortfolioShowcase() {
             descAr: data.descAr || '',
             clientEn: data.clientEn || '',
             clientAr: data.clientAr || '',
-            imageUrl: data.imageUrl || '',
-            galleryImages: data.galleryImages || [],
+            imageUrl: mappedImageUrl,
+            galleryImages: mappedGallery,
             tagsEn: data.tagsEn || [],
             tagsAr: data.tagsAr || [],
             specsEn: data.specsEn || [],
@@ -716,8 +739,25 @@ export default function PortfolioShowcase() {
       setSyncStatus('syncing');
       setSyncErrorMessage('');
 
+      // Fetch currently existing projects in Firestore to match deleted ones
+      const querySnapshot = await getDocs(collection(db, 'projects'));
+      const dbDocIds: string[] = [];
+      querySnapshot.forEach(docSnap => {
+        dbDocIds.push(docSnap.id);
+      });
+
+      const activeIds = optimizedList.map(p => p.id);
+      const idsToDelete = dbDocIds.filter(id => !activeIds.includes(id));
+
       const batch = writeBatch(db);
       let writesCount = 0;
+
+      // Delete any project no longer in the active list
+      for (const deletedId of idsToDelete) {
+        const docRef = doc(db, 'projects', deletedId);
+        batch.delete(docRef);
+        writesCount++;
+      }
 
       optimizedList.forEach((proj, idx) => {
         const docRef = doc(db, 'projects', proj.id);
