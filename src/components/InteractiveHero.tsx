@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, useMotionValue, useTransform, useSpring } from 'motion/react';
 import { useLanguage } from './LanguageContext';
 import { ArrowDown, Layers, ShieldCheck, Sparkles, PenTool, Palette } from 'lucide-react';
+import heroImage from '../assets/images/regenerated_image_1781296623314.webp';
 
 export default function InteractiveHero() {
   const { t, language, dir } = useLanguage();
@@ -281,7 +282,7 @@ export default function InteractiveHero() {
           >
             {/* The high-end luxury generated image asset */}
             <img 
-              src="/src/assets/images/regenerated_image_1781296623314.webp" 
+              src={heroImage} 
               alt="Louai Mouaia Abstract Art Asset"
               referrerPolicy="no-referrer"
               className="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 transition-all duration-750"

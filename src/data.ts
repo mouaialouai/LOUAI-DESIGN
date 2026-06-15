@@ -1,4 +1,7 @@
 import { Project, ProcessPhase, Translation } from './types';
+import brandIdentityImg from './assets/images/louaimouaia_brand_identity_1781292469136.jpg';
+import institutionalPosterImg from './assets/images/louaimouaia_institutional_poster_1781292485220.jpg';
+import socialMediaArtImg from './assets/images/louaimouaia_social_media_art_1781292499793.jpg';
 
 export const TRANSLATIONS: Record<'en' | 'ar', Translation> = {
   en: {
@@ -83,7 +86,7 @@ export const PROJECTS: Project[] = [
     descAr: 'هوية بصرية متكاملة وصارمة لغرفة استثمارية متميزة، تركز على المنظور المعماري الهندسي ودرجات البيج والرمادي الداكن الملوكي.',
     clientEn: 'Al-Qudra Capital Group',
     clientAr: 'مجموعة القدرة الاستثمارية الكبرى',
-    imageUrl: '/src/assets/images/louaimouaia_brand_identity_1781292469136.jpg',
+    imageUrl: brandIdentityImg,
     tagsEn: ['Brand Guidelines', 'Institutional Monogram', 'Stationery Systems', 'Corporate Collateral'],
     tagsAr: ['إرشادات الهوية البصرية', 'الشعار المونوغرامي', 'القرطاسية الرسمية', 'المطبوعات الفاخرة'],
     specsEn: [
@@ -108,7 +111,7 @@ export const PROJECTS: Project[] = [
     descAr: 'ملصق إعلاني متميز لمعرض الخط السنوي، يدمج التكوين الطباعي المتدفق بالتصميم الحداثي الكرومي والنوافذ البصرية النقية.',
     clientEn: 'Global Arabic Arts Academy',
     clientAr: 'الأكاديمية العالمية للفنون العربية',
-    imageUrl: '/src/assets/images/louaimouaia_institutional_poster_1781292485220.jpg',
+    imageUrl: institutionalPosterImg,
     tagsEn: ['Cultural Poster Design', 'Arabic Typography Focus', 'Exhibition Curated Asset', 'Institutional Poster Grid'],
     tagsAr: ['تصميم ملصق ثقافي راقٍ', 'طبوغرافيا الخط العربي المطور', 'أصول المعارض الفنية', 'شبكة الملصقات القياسية'],
     specsEn: [
@@ -133,7 +136,7 @@ export const PROJECTS: Project[] = [
     descAr: 'حملة إعلانية ومحتوى بصري مخصص للعقارات الراقية، ترتكز على توازن متسق ونسبة تركيز عالية لجذب المستثمرين ذوي الميزانيات الكبرى.',
     clientEn: 'Al-Nukhba Real Estate Development',
     clientAr: 'النخبة العالمية للتطوير العقاري الفاخر',
-    imageUrl: '/src/assets/images/louaimouaia_social_media_art_1781292499793.jpg',
+    imageUrl: socialMediaArtImg,
     tagsEn: ['Digital Content System', 'Social Grid Architecture', 'Motion Accent Kits', 'Luxury Conversion Design'],
     tagsAr: ['سلسلة محتوى رقمي متسق', 'شبكية التصاميم للميديا', 'عناصر موشن مخصصة', 'تصاميم جذب الفائدة العقارية'],
     specsEn: [
