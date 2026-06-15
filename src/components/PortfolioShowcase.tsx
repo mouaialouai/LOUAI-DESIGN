@@ -5,6 +5,7 @@ import { PROJECTS } from '../data';
 import { Project } from '../types';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, doc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
+import heroImage from '../assets/images/regenerated_image_1781296623314.webp';
 import { 
   X, Layers, Briefcase, Eye, ArrowUpRight, Cpu, 
   Settings, Plus, Trash2, Edit3, RotateCcw, Image as ImageIcon, 
@@ -489,14 +490,23 @@ export default function PortfolioShowcase() {
   useEffect(() => {
     const mapLegacyImage = (url: string | undefined): string => {
       if (!url) return '';
-      if (url.includes('louaimouaia_brand_identity_1781292469136.jpg')) {
+      
+      // Map legacy absolute/relative path strings to their appropriate bundled files or presets
+      if (url.includes('louaimouaia_brand_identity_1781292469136') || url.includes('brand_identity')) {
         return PROJECTS.find(p => p.id === 'proj-1')?.imageUrl || url;
       }
-      if (url.includes('louaimouaia_institutional_poster_1781292485220.jpg')) {
+      if (url.includes('louaimouaia_institutional_poster_1781292485220') || url.includes('institutional_poster')) {
         return PROJECTS.find(p => p.id === 'proj-2')?.imageUrl || url;
       }
-      if (url.includes('louaimouaia_social_media_art_1781292499793.jpg')) {
+      if (url.includes('louaimouaia_social_media_art_1781292499793') || url.includes('social_media_art')) {
         return PROJECTS.find(p => p.id === 'proj-3')?.imageUrl || url;
+      }
+      if (url.includes('regenerated_image') || url.includes('abstract_hero')) {
+        return heroImage || url;
+      }
+      // If the URL is a relative /src/assets reference that Vercel cannot resolve, fallback to a elegant graphic design Unsplash preset
+      if (url.startsWith('/src/assets/') || url.startsWith('src/assets/')) {
+        return 'https://images.unsplash.com/photo-1541462608141-2f58c6e40265?auto=format&fit=crop&w=1200&q=80';
       }
       return url;
     };
@@ -551,33 +561,14 @@ export default function PortfolioShowcase() {
         isLocalDefault = true;
       }
 
-      // Check if firestore was marked as quota-exhausted
-      const isFirestoreOffline = localStorage.getItem('firestore_offline_mode') === 'true';
-
       try {
-        if (isFirestoreOffline) {
-          setSyncStatus('error');
-          setSyncErrorMessage('Local mode (Quota exceeded)');
-          if (localItems && localItems.length > 0) {
-            setProjectsList(localItems);
-          }
-          return;
-        }
-
+        // We always try to fetch from the cloud database to remain reactive on refresh other than caching,
+        // unless there is a complete connection outage
         let querySnapshot;
         try {
           querySnapshot = await getDocs(collection(db, 'projects'));
         } catch (err: any) {
-          const errMsg = err?.message || String(err);
-          const isQuotaError = errMsg.includes('Quota') || errMsg.includes('quota') || errMsg.includes('resource-exhausted') || errMsg.includes('exhausted');
-          if (isQuotaError) {
-            console.warn('Firestore quota hit. Switching permanently to local storage offline fallback.');
-            localStorage.setItem('firestore_offline_mode', 'true');
-            setSyncStatus('error');
-            setSyncErrorMessage('Firestore Quota Exceeded');
-          } else {
-            console.warn('Muted Firestore load error:', errMsg);
-          }
+          console.warn('Firestore load error. Standardizing fallbacks safely:', err.message || err);
           throw err;
         }
 
@@ -729,13 +720,6 @@ export default function PortfolioShowcase() {
 
     // 3. Transmit changes to Firestore in parallel batches (optimized)
     try {
-      const isOffline = localStorage.getItem('firestore_offline_mode') === 'true';
-      if (isOffline) {
-        setSyncStatus('error');
-        setSyncErrorMessage('Firestore Quota Exceeded (Operating Locally)');
-        return;
-      }
-
       setSyncStatus('syncing');
       setSyncErrorMessage('');
 
@@ -822,22 +806,23 @@ export default function PortfolioShowcase() {
           await batch.commit();
         } catch (writeErr: any) {
           const errMsg = writeErr?.message || String(writeErr);
-          const isQuota = errMsg.includes('Quota') || errMsg.includes('quota') || errMsg.includes('resource-exhausted') || errMsg.includes('exhausted');
-          
-          if (isQuota) {
-            localStorage.setItem('firestore_offline_mode', 'true');
-            console.warn('Firestore write failed due to quota limit. Utilizing secure local storage mode going forward.');
-          } else {
-            console.warn('Muted Firestore write failure:', errMsg);
-          }
+          const isSizeLimit = errMsg.includes('too large') || errMsg.includes('limit') || errMsg.includes('maximum size');
+          console.warn('Firestore write failure captured:', errMsg);
 
           setSyncStatus('error');
           setSyncErrorMessage(writeErr.message || 'Cloud database write error');
+          
+          let alertMsgAr = 'عذراً، فشلت المزامنة السحابية. تم حفظ عملك بأمان في المتصفح محلياً!';
+          let alertMsgEn = 'Could not sync to cloud. Work saved safely in local storage!';
+          
+          if (isSizeLimit) {
+            alertMsgAr = 'فشلت المزامنة لأن حجم الصور المرفقة كبير جداً بالنسبة لقاعدة البيانات! يرجى ضغط الصور أو تقليل دقتها.';
+            alertMsgEn = 'Sync failed because image size is too large for the database payload. Please compress or select a smaller image.';
+          }
+
           setActiveToast({
             type: 'error',
-            message: language === 'en' 
-              ? 'Could not sync to cloud. Work saved safely in local storage!' 
-              : 'عذراً، فشلت المزامنة السحابية. تم حفظ عملك بأمان في المتصفح محلياً!'
+            message: language === 'en' ? alertMsgEn : alertMsgAr
           });
           return;
         }
@@ -1072,6 +1057,31 @@ export default function PortfolioShowcase() {
     setShowRestoreConfirm(true);
   };
 
+  const handleForceCloudSync = async () => {
+    localStorage.removeItem('firestore_offline_mode');
+    setSyncStatus('syncing');
+    setActiveToast({
+      type: 'info',
+      message: language === 'en' 
+        ? 'Forcing database rebuild and syncing current project set...' 
+        : 'جاري إعادة بناء المعرض السحابي ومزامنة جميع الأعمال والملفات البصرية...'
+    });
+    
+    try {
+      await saveProjects(projectsList);
+      setActiveToast({
+        type: 'success',
+        message: language === 'en'
+          ? '🎉 Cloud sync complete! All deleted projects are cleared and images successfully updated.'
+          : '🎉 تم تأكيد المزامنة وإعادة بناء المعرض السحابي بنجاح! تم مسح المشاريع المحذوفة وضبط الصور.'
+      });
+    } catch (err: any) {
+      console.error('Failed to force cloud sync:', err);
+      setSyncStatus('error');
+      setSyncErrorMessage(err?.message || String(err));
+    }
+  };
+
   // Helper arrays for dynamically updating items
   const addTagEn = () => { if (tempTagEn.trim()) { setFormTagsEn([...formTagsEn, tempTagEn.trim()]); setTempTagEn(''); } };
   const removeTagEn = (index: number) => { setFormTagsEn(formTagsEn.filter((_, i) => i !== index)); };
@@ -1247,12 +1257,13 @@ export default function PortfolioShowcase() {
       </div>
 
       {studioMode && (
-        <motion.div 
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-12 p-6 border border-brand-accent bg-brand-surface/80 flex flex-col md:flex-row gap-4 items-center justify-between"
-          id="studio-actions-console"
-        >
+        <>
+          <motion.div 
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-12 p-6 border border-brand-accent bg-brand-surface/80 flex flex-col md:flex-row gap-4 items-center justify-between"
+            id="studio-actions-console"
+          >
           <div className="text-left rtl:text-right">
             <h4 className={`text-sm font-bold text-white tracking-widest uppercase flex items-center gap-2 ${language === 'ar' ? 'font-arabic' : 'font-display'}`}>
               <Settings size={16} className="text-brand-accent animate-spin" />
@@ -1307,6 +1318,35 @@ export default function PortfolioShowcase() {
             </button>
           </div>
         </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 p-5 border border-brand-accent/20 bg-brand-surface/30 flex flex-col md:flex-row gap-5 items-center justify-between"
+          id="studio-sync-console"
+        >
+          <div className="text-left rtl:text-right">
+            <h5 className={`text-xs font-bold text-brand-beige tracking-widest uppercase flex items-center gap-2 ${language === 'ar' ? 'font-arabic' : 'font-mono'}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{language === 'en' ? 'DATABASE SYNCHRONIZATION OVERWRITE' : 'مزامنة السحابة الإجبارية وإصلاح الصور'}</span>
+            </h5>
+            <p className={`text-[11px] text-brand-muted mt-1 leading-relaxed ${language === 'ar' ? 'font-arabic text-xs' : ''}`}>
+              {language === 'en' 
+                ? 'Deletions or changes made here must be explicitly pushed if target devices (like mobile phones) appear out of sync. This forces a clean state-override on the cloud database.'
+                : 'إذا حذفت مشاريع على هذا الجهاز ولكنها لا زالت تظهر في هاتفك أو عند الآخرين، يرجى الضغط على زر المزامنة الإجبارية بالأسفل لمسح كل الملفات العالقة وتوحيد الصورة العامة بشكل فوري.'}
+            </p>
+          </div>
+          <button
+            onClick={handleForceCloudSync}
+            className="flex items-center gap-2 px-4 py-2 border border-brand-accent/45 bg-brand-accent/10 text-brand-accent hover:bg-brand-accent hover:text-brand-dark text-[10px] font-mono tracking-wider uppercase transition-all duration-300 w-full md:w-auto justify-center shrink-0"
+            data-cursor-expand="true"
+            id="studio-force-sync-btn"
+          >
+            <Cpu size={12} className="animate-pulse" />
+            <span>{language === 'en' ? 'FORCE CLOUD SYNC' : 'تأكيد المزامنة الإجبارية'}</span>
+          </button>
+        </motion.div>
+      </>
       )}
 
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 mb-16">
