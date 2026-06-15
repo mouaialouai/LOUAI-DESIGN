@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Projects Collection Matching
+    match /projects/{projectId} {
+      allow get, list: if true;
+      allow create: if isValidProject(incoming());
+      allow update: if isValidProject(incoming());
+      allow delete: if true;
+    }
+
+    // Helper functions
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidProject(data) {
+      return data.id is string
+        && data.id.size() <= 128
+        && data.category is string
+        && data.category.size() <= 128
+        && data.titleEn is string
+        && data.titleEn.size() <= 1000
+        && data.titleAr is string
+        && data.titleAr.size() <= 1000
+        && data.descEn is string
+        && data.descEn.size() <= 10000
+        && data.descAr is string
+        && data.descAr.size() <= 10000
+        && data.clientEn is string
+        && data.clientEn.size() <= 1000
+        && data.clientAr is string
+        && data.clientAr.size() <= 1000
+        && data.imageUrl is string
+        && data.imageUrl.size() <= 5242880; // High limit to perfectly accept embedded base64 images
+    }
+  }
+}
